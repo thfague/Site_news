@@ -1,0 +1,64 @@
+<?php
+/**
+ * Created by PhpStorm.
+ * User: romondiere
+ * Date: 11/01/19
+ * Time: 14:58
+ */
+require_once ('RssGatewaybis.php');
+class ParseurXML{
+    private  $gw;
+    function __construct(Connection $connection)
+    {
+
+        $this->gw= new RssGatewaybis($connection);
+    }
+
+    function miseAJour()
+    {
+        $tab = $this->gw->GetRsss();
+        if (isset($tab)) {
+            foreach ($tab as $rss) {
+                $lien = $rss->getLien();
+                $nom = $rss->getNom();
+                if(isset($lien)&&isset($nom)){
+                    $this->miseAJourUnRss($lien,$nom);
+                }
+                else return;
+            }
+
+        }
+    }
+
+
+    function miseAJourUnRss(string $lien,string $nom){
+        $xml = simplexml_load_file($lien);
+//var_dump($xml->channel->item);
+        if(isset($xml)){
+            if(isset($xml->channel)){
+                if(isset($xml->channel->item)){
+                    foreach ($xml->channel->item as $item){
+                        $guid = isset($item->guid)?$item->guid:"";
+                        $titre = isset($item->title)?$item->title:"";
+                        $description = isset($item->description)?$item->description:"";
+                        $lien = isset($item->link)?$item->link:"";
+                        $pubDate = isset($item->pubDate)?$item->pubDate:"";
+                        $dVueErreur=array();
+
+                        Validation::val_string($guid,$dVueErreur);
+                        Validation::val_string($titre,$dVueErreur);
+                        Validation::val_string($description,$dVueErreur);
+                        Validation::val_URL($lien,$dVueErreur);
+                        Validation::val_string($pubDate,$dVueErreur);
+                        if(! (empty($guid)||empty($titre)||empty($description)||empty($lien)||empty($pubDate))) {
+                            $this->gw->miseAJourRss($guid, $titre, $description,
+                                $lien, $pubDate, "", $nom);
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+        echo "Erreur de parsing";
+    }
+}
